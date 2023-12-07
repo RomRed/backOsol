@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello LoginController!{% endblock %}
+
+{% block body %}
+<form action="{{ path('app_login') }}" method="post">
+    <h3>Login</h3>
+    <div class="field">
+        <label for="username">Email</label>
+        <input id="username" name="_username" type="text" class="text-base text-color surface-overlay p-2 border-1 border-solid surface-border border-round appearance-none outline-none focus:border-primary w-full">
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <div>
+            <input id="password" name="_password" type="password" class="text-base text-color surface-overlay p-2 border-1 border-solid surface-border border-round appearance-none outline-none focus:border-primary w-full">
+        </div>
+    </div>
+    <div class="field grid">
+        <div class="flex justify-content-between w-full">
+            <button type="submit" class="px-4" label="Log in" severity="secondary" rounded></button>
+           
+        </div>
+    </div>
+</form>
+{% endblock %}
