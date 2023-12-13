@@ -6,9 +6,11 @@ use App\Entity\Base;
 use App\Entity\Pico;
 use App\Entity\AcMode;
 use App\Entity\Firmware;
+use App\Entity\SlotBase;
 use App\Entity\ModeCharge;
 use App\Entity\Organisation;
 use App\Entity\UtilisateurPico;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Security;
@@ -238,7 +240,33 @@ public function getOrganisations(): JsonResponse
     foreach ($organisations as $organisation) {
         $data[] = [
             'idOrganisation' => $organisation->getIdOrganisation(),
-            // 'raisonSociale' => $organisation->getRaisonSociale(),
+            'raisonSociale' => $organisation->getRaisonSociale(),
+            'adresse'=>$organisation->getAdresse(),
+            'email'=>$organisation->getEmail(),
+            'telephone'=>$organisation->getTelephone(),
+            'nom_manager'=>$organisation->getNomManager(),
+            'link_automatic_create_update_users'=>$organisation->getLinkAutomaticCreateUpdateUsers(),
+            'logo'=>$organisation->getLogo(),
+            'time_limit'=>$organisation->getTimeLimit(),
+            'logs_delay'=>$organisation->getLogsDelay(),
+            'min_soc'=>$organisation->getMinSoc(),
+            'limit_area'=>$organisation->getLimitArea(),
+            'nbr_pico_par_user'=>$organisation->getNbrPicoParUser(),
+            'date_creation_organisation'=>$organisation->getDateCreationOrganisation(),
+            'automation_time'=>$organisation->getAutomationTime(),
+            'isLimited_area'=>$organisation->isIslimitedArea(),
+            'lock-state'=>$organisation->isLockState(),
+            'isEnable_gps_data_collect'=>$organisation->isIsenableGpsDataCollect(),
+            'isEnable_nfc'=>$organisation->isIsenableNfc(),
+            'isEnable_pico_usb_recharge'=>$organisation->isIsenablePicoUsbRecharge(),
+            'isEnable_statistic_section'=>$organisation->isIsenableStatisticSection(),
+            'lat_org'=>$organisation->getLatOrg(),
+            'long_org'=>$organisation->getLongOrg(),
+            // 'id_badge_algo'=>$organisation->getIdBadgeAlgo(), 
+            // 'id_type_connexion'=>$organisation->getIdTypeConnexion(),
+            // 'id_langue'=>$organisation->getIdLangage(),
+            // 'id_ville'=>$organisation->getIdVille()
+
         ];
     }
 
@@ -262,4 +290,89 @@ public function getAcMode(): JsonResponse
 
     return new JsonResponse($data);
 }
+
+#[Route('/api/basesliste', name: 'app_api_bases_liste', methods: ['GET'])]
+public function getBase(): JsonResponse
+{
+
+    $baseRepository = $this->managerRegistry->getRepository(base::class);
+    $bases = $baseRepository->findAll();
+
+    $data = [];
+    foreach ($bases as $base) {
+
+
+    $data [] = [
+        'id_base' => $base->getIdBase(),
+        'description' => $base->getDescription(),
+        'short_alias' => $base->getShortAlias(),
+        'long_alias' => $base->getLongAlias(),
+        'localisation_installation' => $base->getLocalisationInstallation(),
+        'latitude_base' => $base->getLatitudeBase(),
+        'longitude_base' => $base->getLongitudeBase(),
+        'mac_wifi' => $base->getMacWifi(),
+        'mac_ethernet' => $base->getMacEthernet(),
+        'adresse_ip' => $base->getAdresseIp(),
+        'qr_code' => $base->getQrCode(),
+        'isenable_auth_local' => $base->isIsenableAuthLocal(),
+        'isactived_maintenance_mode' => $base->isIsactivedMaintenanceMode(),
+        'isactived_status' => $base->isIsactivedStatus(),
+
+        'ac_mode' => [
+            'id_ac_mode' => $base->getIdAcMode()->getIdAcMode(),
+
+        ],
+        'organisation' => [
+            'id_organisation' => $base->getIdOrganisation()->getIdOrganisation(),
+
+        ],
+        'firmware' => [
+            'id_firmware' => $base->getIdFirmware()->getIdFirmware(),
+
+        ],
+        'mode_charge' => [
+            'id_mode_charge' => $base->getIdModeCharge()->getIdModeCharge(),
+
+        ],
+    ];
+
+    }
+    return $this->json($data);
+}
+
+
+#[Route('/api/baseDelete', name: 'app_api_bases_delete', methods: ['DELETE'])]
+public function delete(Request $request, EntityManagerInterface $entityManager): Response
+{
+    try {
+        $data = json_decode($request->getContent(), true);
+        $ids = $data['ids'] ?? null;
+
+        if (!$ids) {
+            return $this->json(['error' => 'Aucun ID spécifié pour la suppression'], Response::HTTP_BAD_REQUEST);
+        }
+
+
+        foreach ($ids as $id) {
+            $base = $entityManager->getRepository(Base::class)->find($id);
+            if ($base) {
+
+                $slotBases = $entityManager->getRepository(SlotBase::class)->findBy(['idBase' => $base]);
+                foreach ($slotBases as $slotBase) {
+                    $entityManager->remove($slotBase);
+                }
+                $entityManager->remove($base);
+            }
+        }
+
+        $entityManager->flush();
+
+        return $this->json(['message' => 'Base supprimée avec succès'], Response::HTTP_OK);
+    } catch (\Exception $e) {
+        error_log('Exception lors de la suppression de la base: ' . $e->getMessage());
+
+        return $this->json(['error' => 'Erreur lors de la suppression de la base: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
 }

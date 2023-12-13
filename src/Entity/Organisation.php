@@ -2,6 +2,10 @@
 
 namespace App\Entity;
 
+use App\Entity\Ville;
+use App\Entity\Langage;
+use App\Entity\BadgeAlgo;
+use App\Entity\TypeConnexion;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 

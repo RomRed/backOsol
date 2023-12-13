@@ -13,3 +13,4 @@ security_login:
 
 app_logout:
     path: /logout
+
