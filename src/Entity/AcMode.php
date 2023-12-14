@@ -44,17 +44,6 @@ class AcMode
 
         return $this;
     }
-    /**
-     * Set the value of idAcMode
-     *
-     * @param  int  $idAcMode
-     *
-     * @return  self
-     */ 
-    public function setIdAcMode(int $idAcMode)
-    {
-        $this->idAcMode = $idAcMode;
 
-        return $this;
-    }
+
 }

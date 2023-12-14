@@ -13,10 +13,10 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 /**
  * UtilisateurPico
  *
- * @ORM\Table(name="utilisateur_pico", indexes={@ORM\Index(name="utilisateur_pico_organisation_FK", columns={"id_organisation"})})
- * @ORM\Entity(repositoryClass= "App\Repository\UtilisateurPicoRepository")
+ * @ORM\Table(name="utilisateur_pico")
+ * @ORM\Entity(repositoryClass= "App\Repository\utilisateurPicoRepository")
  */
-class UtilisateurPico  implements UserInterface, PasswordAuthenticatedUserInterface, PasswordHasherAwareInterface
+class UtilisateurPico implements UserInterface, PasswordAuthenticatedUserInterface, PasswordHasherAwareInterface
 {
     /**
      * @var int
@@ -77,14 +77,26 @@ class UtilisateurPico  implements UserInterface, PasswordAuthenticatedUserInterf
     private $dateUpdate = 'NULL';
 
     /**
-     * @var \Organisation
+     * @var bool
      *
-     * @ORM\ManyToOne(targetEntity="Organisation")
-     * @ORM\JoinColumns({
-     *   @ORM\JoinColumn(name="id_organisation", referencedColumnName="id_organisation")
-     * })
+     * @ORM\Column(name="staff", type="boolean", nullable=false)
      */
-    private $idOrganisation;
+    private $staff;
+
+    /**
+     * @var \Doctrine\Common\Collections\Collection
+     *
+     * @ORM\ManyToMany(targetEntity="Organisation", inversedBy="idUtilisateurPico")
+     * @ORM\JoinTable(name="travailler",
+     *   joinColumns={
+     *     @ORM\JoinColumn(name="id_utilisateur_pico", referencedColumnName="id_utilisateur_pico")
+     *   },
+     *   inverseJoinColumns={
+     *     @ORM\JoinColumn(name="id_organisation", referencedColumnName="id_organisation")
+     *   }
+     * )
+     */
+    private $idOrganisation = array();
 
     /**
      * @var \Doctrine\Common\Collections\Collection
@@ -106,6 +118,7 @@ class UtilisateurPico  implements UserInterface, PasswordAuthenticatedUserInterf
      */
     public function __construct()
     {
+        $this->idOrganisation = new \Doctrine\Common\Collections\ArrayCollection();
         $this->idPico = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
@@ -198,14 +211,38 @@ class UtilisateurPico  implements UserInterface, PasswordAuthenticatedUserInterf
         return $this;
     }
 
-    public function getIdOrganisation(): ?Organisation
+    public function isStaff(): ?bool
+    {
+        return $this->staff;
+    }
+
+    public function setStaff(bool $staff): static
+    {
+        $this->staff = $staff;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Organisation>
+     */
+    public function getIdOrganisation(): Collection
     {
         return $this->idOrganisation;
     }
 
-    public function setIdOrganisation(?Organisation $idOrganisation): static
+    public function addIdOrganisation(Organisation $idOrganisation): static
     {
-        $this->idOrganisation = $idOrganisation;
+        if (!$this->idOrganisation->contains($idOrganisation)) {
+            $this->idOrganisation->add($idOrganisation);
+        }
+
+        return $this;
+    }
+
+    public function removeIdOrganisation(Organisation $idOrganisation): static
+    {
+        $this->idOrganisation->removeElement($idOrganisation);
 
         return $this;
     }
@@ -233,10 +270,7 @@ class UtilisateurPico  implements UserInterface, PasswordAuthenticatedUserInterf
 
         return $this;
     }
-
-
-
-              //--------- UserInterface
+            //--------- UserInterface
 
     /**
 

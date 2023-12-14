@@ -14,7 +14,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method UtilisateurPico[]    findAll()
  * @method UtilisateurPico[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
-class UtilisateurPicoRepository extends ServiceEntityRepository
+class utilisateurPicoRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {

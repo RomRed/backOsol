@@ -7,7 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Base
  *
- * @ORM\Table(name="base", indexes={@ORM\Index(name="base_organisation2_FK", columns={"id_organisation"}), @ORM\Index(name="base_ac_mode_FK", columns={"id_ac_mode"}), @ORM\Index(name="base_mode_charge0_FK", columns={"id_mode_charge"}), @ORM\Index(name="base_firmware1_FK", columns={"id_firmware"})})
+ * @ORM\Table(name="base", indexes={@ORM\Index(name="base_ac_mode_FK", columns={"id_ac_mode"}), @ORM\Index(name="base_mode_charge0_FK", columns={"id_mode_charge"}), @ORM\Index(name="base_firmware1_FK", columns={"id_firmware"}), @ORM\Index(name="base_organisation2_FK", columns={"id_organisation"})})
  * @ORM\Entity(repositoryClass= "App\Repository\BaseRepository")
  */
 class Base

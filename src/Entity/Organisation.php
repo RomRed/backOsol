@@ -2,17 +2,15 @@
 
 namespace App\Entity;
 
-use App\Entity\Ville;
-use App\Entity\Langage;
-use App\Entity\BadgeAlgo;
-use App\Entity\TypeConnexion;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Organisation
  *
- * @ORM\Table(name="organisation", indexes={@ORM\Index(name="organisation_langage1_FK", columns={"id_langage"}), @ORM\Index(name="organisation_ville2_FK", columns={"id_ville"}), @ORM\Index(name="organisation_badge_algo_FK", columns={"id_badge_algo"}), @ORM\Index(name="organisation_type_connexion0_FK", columns={"id_type_connexion"})})
+ * @ORM\Table(name="organisation", indexes={@ORM\Index(name="organisation_ville2_FK", columns={"id_ville"}), @ORM\Index(name="organisation_badge_algo_FK", columns={"id_badge_algo"}), @ORM\Index(name="organisation_type_connexion0_FK", columns={"id_type_connexion"}), @ORM\Index(name="organisation_langage1_FK", columns={"id_langage"})})
  * @ORM\Entity(repositoryClass= "App\Repository\OrganisationRepository")
  */
 class Organisation
@@ -174,18 +172,38 @@ class Organisation
     private $isenableStatisticSection = 'NULL';
 
     /**
-     * @var float|null
+     * @var float
      *
-     * @ORM\Column(name="lat_org", type="float", precision=10, scale=0, nullable=true, options={"default"="NULL"})
+     * @ORM\Column(name="lat_org", type="float", precision=10, scale=0, nullable=false)
      */
-    private $latOrg = NULL;
+    private $latOrg;
 
     /**
-     * @var float|null
+     * @var float
      *
-     * @ORM\Column(name="long_org", type="float", precision=10, scale=0, nullable=true, options={"default"="NULL"})
+     * @ORM\Column(name="long_org", type="float", precision=10, scale=0, nullable=false)
      */
-    private $longOrg = NULL;
+    private $longOrg;
+
+    /**
+     * @var \BadgeAlgo
+     *
+     * @ORM\ManyToOne(targetEntity="BadgeAlgo")
+     * @ORM\JoinColumns({
+     *   @ORM\JoinColumn(name="id_badge_algo", referencedColumnName="id_badge_algo")
+     * })
+     */
+    private $idBadgeAlgo;
+
+    /**
+     * @var \Ville
+     *
+     * @ORM\ManyToOne(targetEntity="Ville")
+     * @ORM\JoinColumns({
+     *   @ORM\JoinColumn(name="id_ville", referencedColumnName="id_ville")
+     * })
+     */
+    private $idVille;
 
     /**
      * @var \Langage
@@ -208,24 +226,19 @@ class Organisation
     private $idTypeConnexion;
 
     /**
-     * @var \BadgeAlgo
+     * @var \Doctrine\Common\Collections\Collection
      *
-     * @ORM\ManyToOne(targetEntity="BadgeAlgo")
-     * @ORM\JoinColumns({
-     *   @ORM\JoinColumn(name="id_badge_algo", referencedColumnName="id_badge_algo")
-     * })
+     * @ORM\ManyToMany(targetEntity="UtilisateurPico", mappedBy="idOrganisation")
      */
-    private $idBadgeAlgo;
+    private $idUtilisateurPico = array();
 
     /**
-     * @var \Ville
-     *
-     * @ORM\ManyToOne(targetEntity="Ville")
-     * @ORM\JoinColumns({
-     *   @ORM\JoinColumn(name="id_ville", referencedColumnName="id_ville")
-     * })
+     * Constructor
      */
-    private $idVille;
+    public function __construct()
+    {
+        $this->idUtilisateurPico = new \Doctrine\Common\Collections\ArrayCollection();
+    }
 
     public function getIdOrganisation(): ?int
     {
@@ -489,7 +502,7 @@ class Organisation
         return $this->latOrg;
     }
 
-    public function setLatOrg(?float $latOrg): static
+    public function setLatOrg(float $latOrg): static
     {
         $this->latOrg = $latOrg;
 
@@ -501,33 +514,9 @@ class Organisation
         return $this->longOrg;
     }
 
-    public function setLongOrg(?float $longOrg): static
+    public function setLongOrg(float $longOrg): static
     {
         $this->longOrg = $longOrg;
-
-        return $this;
-    }
-
-    public function getIdLangage(): ?Langage
-    {
-        return $this->idLangage;
-    }
-
-    public function setIdLangage(?Langage $idLangage): static
-    {
-        $this->idLangage = $idLangage;
-
-        return $this;
-    }
-
-    public function getIdTypeConnexion(): ?TypeConnexion
-    {
-        return $this->idTypeConnexion;
-    }
-
-    public function setIdTypeConnexion(?TypeConnexion $idTypeConnexion): static
-    {
-        $this->idTypeConnexion = $idTypeConnexion;
 
         return $this;
     }
@@ -556,5 +545,55 @@ class Organisation
         return $this;
     }
 
+    public function getIdLangage(): ?Langage
+    {
+        return $this->idLangage;
+    }
+
+    public function setIdLangage(?Langage $idLangage): static
+    {
+        $this->idLangage = $idLangage;
+
+        return $this;
+    }
+
+    public function getIdTypeConnexion(): ?TypeConnexion
+    {
+        return $this->idTypeConnexion;
+    }
+
+    public function setIdTypeConnexion(?TypeConnexion $idTypeConnexion): static
+    {
+        $this->idTypeConnexion = $idTypeConnexion;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UtilisateurPico>
+     */
+    public function getIdUtilisateurPico(): Collection
+    {
+        return $this->idUtilisateurPico;
+    }
+
+    public function addIdUtilisateurPico(UtilisateurPico $idUtilisateurPico): static
+    {
+        if (!$this->idUtilisateurPico->contains($idUtilisateurPico)) {
+            $this->idUtilisateurPico->add($idUtilisateurPico);
+            $idUtilisateurPico->addIdOrganisation($this);
+        }
+
+        return $this;
+    }
+
+    public function removeIdUtilisateurPico(UtilisateurPico $idUtilisateurPico): static
+    {
+        if ($this->idUtilisateurPico->removeElement($idUtilisateurPico)) {
+            $idUtilisateurPico->removeIdOrganisation($this);
+        }
+
+        return $this;
+    }
 
 }
