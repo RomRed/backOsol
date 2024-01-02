@@ -17,9 +17,17 @@ use Symfony\Component\Security\Core\Security;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Csrf\TokenStorage\TokenStorageInterface;
+use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+
+
 
 class ApiController extends AbstractController
 {
@@ -27,16 +35,18 @@ class ApiController extends AbstractController
 
     private JWTTokenManagerInterface $jwtManager;
     private UserPasswordHasherInterface  $passwordEncoder;
+    private TokenStorageInterface $tokenStorage;
 
-    public function __construct(ManagerRegistry $managerRegistry, JWTTokenManagerInterface $jwtManager, UserPasswordHasherInterface $passwordEncoder)
+    public function __construct(ManagerRegistry $managerRegistry, JWTTokenManagerInterface $jwtManager, UserPasswordHasherInterface $passwordEncoder,TokenStorageInterface $tokenStorage)
     {
         $this->managerRegistry = $managerRegistry;
         $this->jwtManager = $jwtManager;
         $this->passwordEncoder = $passwordEncoder;
+        $this->tokenStorage = $tokenStorage;
     }
     
     #[Route('/api', name: 'app_api')]
-    public function getUsers()
+    public function getUsers(Security $security)
 {
     
     $userRepository  = $this->managerRegistry->getRepository(UtilisateurPico::class);
@@ -50,11 +60,11 @@ class ApiController extends AbstractController
             'numBadge' => $user->getNumBadge(),
             'nom' => $user->getNom(),
             'prenom' => $user->getPrenom(),
-            'email'=> $user-> getEmail(),
-            'mdp'=> $user-> getMdp(),
+            'email' => $user->getEmail(),
+            'mdp' => $user->getMdp(),
+            'role' => $data['roles'] ?? $user->getRoles()[0],
         ];
     }
-
 
     return new JsonResponse($data);
 }
@@ -71,8 +81,6 @@ public function login(Request $request, Security $security)
         return new JsonResponse(['message' => 'Identifiants incorrects'], Response::HTTP_UNAUTHORIZED);
     }
 
-    $token = $this->jwtManager->create($user);
-
     // Ajoute les informations de l'utilisateur dans la réponse
     $userData = [
         'idUtilisateurPico' => $user->getIdUtilisateurPico(),
@@ -80,35 +88,19 @@ public function login(Request $request, Security $security)
         'nom' => $user->getNom(),
         'prenom' => $user->getPrenom(),
         'email'=> $user->getEmail(),
+        'staff' => $user->isStaff(),
+        'role' => $data['roles'] ?? $user->getRoles()[0],
     ];
+
+    $token = $this->jwtManager->create($user);
 
     // Retourne les informations de l'utilisateur dans la réponse
     return new JsonResponse(['token' => $token, 'user' => $userData, 'message' => 'Authentification réussie']);
 }
 
-#[Route('/api/user', name: 'app_api_user', methods: ['GET'])]
-    public function getUserInfo(Security $security)
-    {
-        $user = $security->getUser();
-
-        if (!$user) {
-            return new JsonResponse(['message' => 'Utilisateur non authentifié'], JsonResponse::HTTP_UNAUTHORIZED);
-        }
-
-        $userData = [
-            'idUtilisateurPico' => $user->getIdUtilisateurPico(),
-            'numBadge' => $user->getNumBadge(),
-            'nom' => $user->getNom(),
-            'prenom' => $user->getPrenom(),
-            'email'=> $user->getEmail(),
-        ];
-
-        return new JsonResponse(['user' => $userData]);
-    }
-
 
     #[Route('/api/pico', name: 'app_api_pico', methods: ['GET'])]
-    public function getPicos(): JsonResponse
+    public function getPicos(Security $security): JsonResponse
     {
         
         $picoRepository = $this->managerRegistry->getRepository(Pico::class);
@@ -147,8 +139,13 @@ public function login(Request $request, Security $security)
 
 
     #[Route('/api/bases', name: 'app_api_bases', methods: ['POST'])]
-public function addBase(Request $request): JsonResponse
+public function addBase(Request $request,Security $security): JsonResponse
 {
+    if (!$security->isGranted('ROLE_ADMIN')) {
+        // Si le rôle n'est pas administrateur, renvoyer une réponse d'erreur
+        return new JsonResponse(['error' => 'Access denied.'], 403); // Code 403: Forbidden
+    }
+
     $data = json_decode($request->getContent(), true);
     
         $idAcMode = $data['idAcMode'];
@@ -193,7 +190,7 @@ public function addBase(Request $request): JsonResponse
 
 
 #[Route('/api/mode_charges', name: 'api_mode_charges', methods: ['GET'])]
-public function getModeCharges(): JsonResponse
+public function getModeCharges(Security $security): JsonResponse
 {
     $modeChargeRepository = $this->managerRegistry->getRepository(ModeCharge::class);
     $modeCharges = $modeChargeRepository->findAll();
@@ -212,7 +209,7 @@ public function getModeCharges(): JsonResponse
 
 
 #[Route('/api/firmwares', name: 'api_firmwares', methods: ['GET'])]
-public function getFirmwares(): JsonResponse
+public function getFirmwares(Security $security): JsonResponse
 {
     $firmwareRepository = $this->managerRegistry->getRepository(Firmware::class);
     $firmwares = $firmwareRepository->findAll();
@@ -230,13 +227,16 @@ public function getFirmwares(): JsonResponse
 }
 
 #[Route('/api/organisations', name: 'api_organisations', methods: ['GET'])]
-public function getOrganisations(): JsonResponse
+public function getOrganisations(Request $request,Security $security): JsonResponse
 {
+    try {
+        if (!$security->isGranted('ROLE_ADMIN')) {
+            // Si le rôle n'est pas administrateur, renvoyer une réponse d'erreur
+            return new JsonResponse(['error' => 'Access denied.'], 403); // Code 403: Forbidden
+        }
     $organisationRepository = $this->managerRegistry->getRepository(Organisation::class);
     $organisations = $organisationRepository->findAll();
-
     $data = [];
-
     foreach ($organisations as $organisation) {
         $data[] = [
             'idOrganisation' => $organisation->getIdOrganisation(),
@@ -262,19 +262,16 @@ public function getOrganisations(): JsonResponse
             'isEnable_statistic_section'=>$organisation->isIsenableStatisticSection(),
             'lat_org'=>$organisation->getLatOrg(),
             'long_org'=>$organisation->getLongOrg(),
-            // 'id_badge_algo'=>$organisation->getIdBadgeAlgo(), 
-            // 'id_type_connexion'=>$organisation->getIdTypeConnexion(),
-            // 'id_langue'=>$organisation->getIdLangage(),
-            // 'id_ville'=>$organisation->getIdVille()
-
         ];
     }
-
     return new JsonResponse($data);
+} catch (\Exception $e) {
+    return new JsonResponse(['error' => 'An error occurred'], 500);
+}
 }
 
 #[Route('/api/ac_mode', name: 'api_ac_mode', methods: ['GET'])]
-public function getAcMode(): JsonResponse
+public function getAcMode(Security $security): JsonResponse
 {
     $AcModeRepository = $this->managerRegistry->getRepository(AcMode::class);
     $AcModes = $AcModeRepository->findAll();
@@ -292,7 +289,7 @@ public function getAcMode(): JsonResponse
 }
 
 #[Route('/api/basesliste', name: 'app_api_bases_liste', methods: ['GET'])]
-public function getBase(): JsonResponse
+public function getBase(Security $security): JsonResponse
 {
 
     $baseRepository = $this->managerRegistry->getRepository(base::class);
@@ -342,9 +339,14 @@ public function getBase(): JsonResponse
 
 
 #[Route('/api/baseDelete', name: 'app_api_bases_delete', methods: ['DELETE'])]
-public function delete(Request $request, EntityManagerInterface $entityManager): Response
+public function delete(Request $request, EntityManagerInterface $entityManager, Security $security): Response
 {
     try {
+        if (!$security->isGranted('ROLE_ADMIN')) {
+            // Si le rôle n'est pas administrateur, renvoyer une réponse d'erreur
+            return new JsonResponse(['error' => 'Access denied.'], 403); // Code 403: Forbidden
+        }
+
         $data = json_decode($request->getContent(), true);
         $ids = $data['ids'] ?? null;
 
@@ -375,4 +377,51 @@ public function delete(Request $request, EntityManagerInterface $entityManager):
     }
 }
 
+
+    #[Route('/api/basesModif/{id}', name: 'app_api_update_base', methods: ['PUT', 'PATCH'])]
+    public function updateBase(Request $request, int $id): JsonResponse
+    {
+        if (!$security->isGranted('ROLE_ADMIN')) {
+            // Si le rôle n'est pas administrateur, renvoyer une réponse d'erreur
+            return new JsonResponse(['error' => 'Access denied.'], 403); // Code 403: Forbidden
+        }
+    
+        $entityManager = $this->managerRegistry->getManager();
+        $base = $entityManager->getRepository(Base::class)->find($id);
+    
+        if (!$base) {
+            return new JsonResponse(['message' => 'Base non trouvée'], JsonResponse::HTTP_NOT_FOUND);
+        }
+    
+        $data = json_decode($request->getContent(), true);
+    
+        $properties = [
+            'description', 'shortAlias', 'longAlias', 'localisationInstallation',
+            'latitudeBase', 'longitudeBase', 'macWifi', 'macEthernet',
+            'adresseIp', 'qrCode', 'isenableAuthLocal', 'isactivedMaintenanceMode',
+            'isactivedStatus', 'idModeCharge', 'idFirmware', 'idOrganisation', 'idAcMode'
+        ];
+    
+        foreach ($properties as $property) {
+            if (isset($data[$property])) {
+
+                if (in_array($property, ['idModeCharge', 'idFirmware', 'idOrganisation', 'idAcMode'])) {
+                    $entityClass = substr($property, 2);
+                    $entity = $entityManager->getRepository("App\\Entity\\$entityClass")->find($data[$property]);
+                    $setterMethod = 'set' . ucfirst($property);
+                    $base->$setterMethod($entity);
+                } else {
+                    // met à jour la propriété
+                    $setterMethod = 'set' . ucfirst($property);
+                    $base->$setterMethod($data[$property]);
+                }
+            }
+        }
+    
+        $entityManager->flush();
+    
+        return new JsonResponse(['message' => 'Base mise à jour avec succès'], JsonResponse::HTTP_OK);
+    }
+
 }
+

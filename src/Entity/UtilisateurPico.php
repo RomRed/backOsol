@@ -10,11 +10,12 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherAwareInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
+
 /**
  * UtilisateurPico
  *
  * @ORM\Table(name="utilisateur_pico")
- * @ORM\Entity(repositoryClass= "App\Repository\utilisateurPicoRepository")
+ * @ORM\Entity(repositoryClass= "App\Repository\UtilisateurRepository")
  */
 class UtilisateurPico implements UserInterface, PasswordAuthenticatedUserInterface, PasswordHasherAwareInterface
 {
@@ -270,7 +271,7 @@ class UtilisateurPico implements UserInterface, PasswordAuthenticatedUserInterfa
 
         return $this;
     }
-            //--------- UserInterface
+             //--------- UserInterface
 
     /**
 
@@ -297,8 +298,13 @@ class UtilisateurPico implements UserInterface, PasswordAuthenticatedUserInterfa
      */
     public function getRoles(): array
     {
+        $roles = ['ROLE_USER'];
 
-        return ['ROLE_USER'];
+        if ($this->isStaff()) {
+            $roles = ['ROLE_ADMIN'];
+        }
+
+        return $roles;
     }
  
  
